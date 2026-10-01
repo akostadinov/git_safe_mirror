@@ -1,0 +1,70 @@
+[Unit]
+Description=Git repository mirror synchronization
+Wants=network-online.target
+After=network-online.target git-mirror-image.service
+Requires=git-mirror-image.service
+
+[Container]
+Image=localhost/git-mirror:current
+Pull=never
+ContainerName=git-mirror
+
+# Rootless user namespace. The numeric IDs must be the same IDs used in the
+# Dockerfile. Host-mounted files consequently remain owned by your account.
+UserNS=keep-id:uid=1000,gid=1000
+User=1000
+Group=1000
+
+# Runtime privilege reduction.
+ReadOnly=true
+NoNewPrivileges=true
+DropCapability=all
+RunInit=true
+PidsLimit=256
+Umask=0077
+
+# Do not import proxy variables from the user/system environment.
+HttpProxy=false
+
+# Only persistent writable data: the dedicated mirror destination.
+Volume=%h/.local/share/git-mirror/mirrors:/mirrors:rw,Z
+
+# Config is visible but not writable by the container.
+Volume=%h/.local/share/git-mirror/config:/config:ro,Z
+
+# Explicit private scratch area. It is ephemeral and has no execute bit.
+Tmpfs=/tmp:rw,nosuid,nodev,noexec,size=128m,mode=1777
+
+Environment=BASE_DIR=/mirrors
+Environment=ORGS_FILE=/config/orgs.txt
+Environment=REPOS_FILE=/config/repos.txt
+Environment=HOME=/tmp
+Environment=GIT_TERMINAL_PROMPT=0
+Environment=GIT_CONFIG_NOSYSTEM=1
+
+# Permit only the transports that this workload needs. This does not prevent
+# outbound connections to arbitrary Internet hosts through those transports.
+Environment=GIT_CONFIG_COUNT=3
+Environment=GIT_CONFIG_KEY_0=protocol.allow
+Environment=GIT_CONFIG_VALUE_0=never
+Environment=GIT_CONFIG_KEY_1=protocol.https.allow
+Environment=GIT_CONFIG_VALUE_1=always
+Environment=GIT_CONFIG_KEY_2=protocol.ssh.allow
+Environment=GIT_CONFIG_VALUE_2=always
+
+# Optional GitHub API discovery token. Create it first:
+# printf '%s' 'TOKEN' | podman secret create git-mirror-gh-token -
+# Secret=git-mirror-gh-token,type=env,target=GH_TOKEN
+
+LogDriver=journald
+StopTimeout=90
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+
+# Long mirror jobs are valid. Normal shutdown still stops the unit; this is
+# not an inhibitor and does not guarantee that a fetch completes.
+TimeoutStartSec=infinity
+TimeoutStopSec=10min
+Restart=no

@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Git mirror synchronization
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+RandomizedDelaySec=10m
+Unit=git-mirror.service
+
+[Install]
+WantedBy=timers.target

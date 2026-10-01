@@ -1,0 +1,4 @@
+# One public GitHub organization per line.
+# Repositories are discovered through gh when authenticated, otherwise curl+jq.
+
+example-org

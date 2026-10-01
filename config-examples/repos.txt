@@ -1,0 +1,5 @@
+# One explicit Git remote URL per line.
+
+https://github.com/owner/repository.git
+git@gitlab.com:group/subgroup/project.git
+ssh://git@git.example.net:2222/group/project.git

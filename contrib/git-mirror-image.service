@@ -1,0 +1,8 @@
+[Unit]
+Description=Ensure rootless Git mirror image is fresh
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/share/git-mirror/bin/ensure-image.sh
+TimeoutStartSec=infinity
+UMask=0077
