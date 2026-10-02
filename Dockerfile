@@ -6,8 +6,7 @@ RUN apk add --no-cache \
         curl \
         git \
         github-cli \
-        jq \
-    && git fetch -h 2>&1 | grep -q -- '--porcelain'
+        jq
 
 COPY git_safe_mirror.sh /usr/local/bin/git_safe_mirror.sh
 
