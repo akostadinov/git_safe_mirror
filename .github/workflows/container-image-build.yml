@@ -30,9 +30,10 @@ jobs:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
           type=schedule
-          type=ref,event=branch
+          type=ref,event=branch,enable=${{ !startsWith(github.ref_name, 'dependabot/') }}
           type=raw,value=latest,enable=${{ github.ref_name == 'main' }}
           type=raw,value=nightly,enable=${{ github.ref_name == 'main' }}
+          type=raw,value=dependabot,enable=${{ github.event_name == 'push' && startsWith(github.ref_name, 'dependabot/') || github.event_name == 'pull_request' && startsWith(github.head_ref, 'dependabot/') }}
           ${{ inputs.custom_tag }}
           type=ref,event=tag
           type=ref,event=pr
