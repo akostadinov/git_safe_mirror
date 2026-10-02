@@ -23,7 +23,7 @@ class DedupTestCase(MirrorTestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(r.stderr.count("CLONE  %s" % url), 1, r.stderr)
         self.assertNotIn("UPDATE ", r.stderr)
-        self.assertIn("DONE: 1 repos, 0 failures", r.stderr)
+        self.assert_done(r.stderr, 1, 0)
         self.assertEqual(self.refs(url)["refs/heads/main"], up.tip("main"))
         api = [x for x in self.api_captured() if x["host"] == "api.github.com"]
         self.assertGreaterEqual(len(api), 1)
@@ -36,7 +36,7 @@ class DedupTestCase(MirrorTestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(r.stderr.count("CLONE  %s" % url), 1, r.stderr)
         self.assertNotIn("UPDATE ", r.stderr)
-        self.assertIn("DONE: 1 repos, 0 failures", r.stderr)
+        self.assert_done(r.stderr, 1, 0)
         self.assertEqual(self.refs(url)["refs/heads/main"], up.tip("main"))
 
     def test_DEDUP_03_exact_string_key_same_mirror_dir(self):
@@ -59,7 +59,7 @@ class DedupTestCase(MirrorTestCase):
         self.assertIn("UPDATE %s" % url_plain, r.stderr)
         self.assertIn(
             "WARN: tag fetch failed: %s" % url_plain, r.stderr)
-        self.assertIn("DONE: 2 repos, 1 failures", r.stderr)
+        self.assert_done(r.stderr, 2, 1)
         self.assertEqual(self.refs(url_git)["refs/heads/main"], up.tip("main"))
 
 

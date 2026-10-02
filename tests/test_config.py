@@ -27,7 +27,7 @@ class ConfigTestCase(MirrorTestCase):
             orgs=["# leading comment", "acme", "#no-space", "  # indented"])
         self.assertEqual(self.org_lines(r.stderr), ["ORG    acme"])
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("DONE: 1 repos, 0 failures", r.stderr)
+        self.assert_done(r.stderr, 1, 0)
         self.assertIn("CLONE  https://github.com/acme/repo.git", r.stderr)
         api = [x for x in self.api_captured() if x["host"] == "api.github.com"]
         self.assertGreaterEqual(len(api), 1)
@@ -43,7 +43,7 @@ class ConfigTestCase(MirrorTestCase):
         r = self.run_script(orgs=["", "   ", "\t", "acme", "  \t  ", ""])
         self.assertEqual(self.org_lines(r.stderr), ["ORG    acme"])
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("DONE: 1 repos, 0 failures", r.stderr)
+        self.assert_done(r.stderr, 1, 0)
         self.assertIn("CLONE  https://github.com/acme/repo.git", r.stderr)
 
     def test_CFG_03_crlf_stripped(self):
@@ -56,7 +56,7 @@ class ConfigTestCase(MirrorTestCase):
         self.assertEqual(self.org_lines(r.stderr), ["ORG    acme"])
         self.assertNotIn("\r", r.stderr)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("DONE: 1 repos, 0 failures", r.stderr)
+        self.assert_done(r.stderr, 1, 0)
         api = [x for x in self.api_captured() if x["host"] == "api.github.com"]
         self.assertGreaterEqual(len(api), 1)
         self.assertNotIn("%0D", api[0]["path"])

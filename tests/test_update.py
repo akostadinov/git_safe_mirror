@@ -8,40 +8,12 @@ See tests/TEST_CATALOG.md for the exact assertions.
 """
 
 import re
-import subprocess
 import unittest
 
 from tests.harness import MirrorTestCase
 
-BACKUP_RE = re.compile(r"^refs/heads/(?P<branch>.+)-(?P<ts>\d{14})$")
-STAGING_PREFIX = "refs/git-mirror/staging/"
-
 
 class UpdateTestCase(MirrorTestCase):
-    def remote_url(self, url):
-        out = subprocess.run(
-            ["git", "--git-dir", self.mirror_dir(url),
-             "config", "--get", "remote.origin.url"],
-            capture_output=True, text=True, check=True,
-        )
-        return out.stdout.strip()
-
-    def backup_refs(self, url, branch=None):
-        result = []
-        for ref in self.refs(url):
-            m = BACKUP_RE.match(ref)
-            if not m:
-                continue
-            if branch is None or m.group("branch") == branch:
-                result.append(ref)
-        return result
-
-    def assert_no_staging(self, url):
-        for ref in self.refs(url):
-            self.assertFalse(
-                ref.startswith(STAGING_PREFIX),
-                "unexpected staging ref: %s" % ref,
-            )
 
     def test_UPDATE_01_fast_forward(self):
         url = "https://github.com/acme/repo-u01.git"
@@ -136,6 +108,29 @@ class UpdateTestCase(MirrorTestCase):
         self.assertEqual(self.backup_refs(url, "dev"), [])
         self.assert_no_staging(url)
 
+    def test_UPDATE_05_multi_branch_fast_forward(self):
+        url = "https://github.com/acme/repo-u05.git"
+        up = self.make_upstream("github.com", "acme/repo-u05")
+        up.branch("dev")
+
+        r1 = self.run_script(repos=[url])
+        self.assertEqual(r1.returncode, 0, r1.stderr)
+
+        new_main = up.commit("main advance", branch="main")
+        new_dev = up.commit("dev advance", branch="dev")
+
+        r2 = self.run_script(repos=[url])
+        self.assertEqual(r2.returncode, 0, r2.stderr)
+        self.assertIn("UPDATE %s" % url, r2.stderr)
+        self.assertNotIn("FORCE PUSH", r2.stderr)
+
+        refs = self.refs(url)
+        self.assertEqual(refs["refs/heads/main"], new_main)
+        self.assertEqual(refs["refs/heads/dev"], new_dev)
+        self.assertEqual(self.backup_refs(url, "main"), [])
+        self.assertEqual(self.backup_refs(url, "dev"), [])
+        self.assert_no_staging(url)
+
     def test_UPDATE_06_no_prune_of_deleted_branch(self):
         url = "https://github.com/acme/repo-u06.git"
         up = self.make_upstream("github.com", "acme/repo-u06")
@@ -221,7 +216,7 @@ class UpdateTestCase(MirrorTestCase):
         self.assertEqual(r2.returncode, 1, r2.stderr)
         self.assertIn(
             "WARN: branch staging fetch failed: %s" % bad, r2.stderr)
-        self.assertIn("DONE: 2 repos, 1 failures", r2.stderr)
+        self.assert_done(r2.stderr, 2, 1)
 
         self.assertEqual(self.refs(good)["refs/heads/main"], good_tip)
         self.assertEqual(self.refs(bad)["refs/heads/main"], bad_before)

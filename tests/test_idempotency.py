@@ -10,17 +10,8 @@ import unittest
 
 from tests.harness import MirrorTestCase
 
-STAGING_PREFIX = "refs/git-mirror/staging/"
-
 
 class IdempotencyTestCase(MirrorTestCase):
-    def assert_no_staging(self, url):
-        for ref in self.refs(url):
-            self.assertFalse(
-                ref.startswith(STAGING_PREFIX),
-                "unexpected staging ref: %s" % ref,
-            )
-
     def test_IDEM_01_second_run_no_change(self):
         url = "https://github.com/acme/idem.git"
         self.make_upstream("github.com", "acme/idem")

@@ -8,12 +8,9 @@ See tests/TEST_CATALOG.md for the exact assertions.
 """
 
 import os
-import re
 import unittest
 
-from tests.harness import MirrorTestCase
-
-BACKUP_RE = re.compile(r"refs/heads/main-\d{14}")
+from tests.harness import MirrorTestCase, BACKUP_RE
 
 
 class PackTestCase(MirrorTestCase):

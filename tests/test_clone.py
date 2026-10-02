@@ -8,12 +8,6 @@ from tests.harness import MirrorTestCase
 
 
 class CloneTest(MirrorTestCase):
-    def _remote_url(self, url):
-        return subprocess.run(
-            ["git", "--git-dir", self.mirror_dir(url), "remote", "get-url", "origin"],
-            capture_output=True, text=True, check=True,
-        ).stdout.strip()
-
     def _is_bare(self, url):
         return subprocess.run(
             ["git", "--git-dir", self.mirror_dir(url), "rev-parse", "--is-bare-repository"],
@@ -29,11 +23,11 @@ class CloneTest(MirrorTestCase):
         result = self.run_script(repos=[url])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("CLONE  " + url, result.stderr)
-        self.assertIn("DONE: 1 repos, 0 failures", result.stderr)
+        self.assert_done(result.stderr, 1, 0)
         self.assertTrue(os.path.isdir(self.mirror_dir(url)))
         self.assertTrue(self._is_bare(url))
         self.assertEqual(self.refs(url).get("refs/heads/main"), upstream.tip())
-        self.assertEqual(self._remote_url(url), url)
+        self.assertEqual(self.remote_url(url), url)
         info_refs = self._info_refs_requests(url)
         self.assertEqual(len(info_refs), 1)
         self.assertTrue(all(r["method"] == "GET" for r in self.git_captured(url)))
@@ -44,13 +38,13 @@ class CloneTest(MirrorTestCase):
         result = self.run_script(repos=[url])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("CLONE  " + url, result.stderr)
-        self.assertIn("DONE: 1 repos, 0 failures", result.stderr)
+        self.assert_done(result.stderr, 1, 0)
         self.assertEqual(
             self.mirror_dir(url),
             os.path.join(self.base_dir, "gitlab.com", "group", "subgroup", "project.git"),
         )
         self.assertTrue(os.path.isdir(self.mirror_dir(url)))
-        self.assertEqual(self._remote_url(url), url)
+        self.assertEqual(self.remote_url(url), url)
 
     def test_clone_03_ssh_url_port_stripped(self):
         url = "ssh://git@git.example.net:2222/group/project.git"
@@ -58,13 +52,13 @@ class CloneTest(MirrorTestCase):
         result = self.run_script(repos=[url])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("CLONE  " + url, result.stderr)
-        self.assertIn("DONE: 1 repos, 0 failures", result.stderr)
+        self.assert_done(result.stderr, 1, 0)
         self.assertEqual(
             self.mirror_dir(url),
             os.path.join(self.base_dir, "git.example.net", "group", "project.git"),
         )
         self.assertTrue(os.path.isdir(self.mirror_dir(url)))
-        self.assertEqual(self._remote_url(url), url)
+        self.assertEqual(self.remote_url(url), url)
 
     def test_clone_04_git_suffix_and_trailing_slash(self):
         url_git = "https://github.com/owner/repo.git"
@@ -73,13 +67,15 @@ class CloneTest(MirrorTestCase):
         self.make_upstream("github.com", "owner/repo2")
         result = self.run_script(repos=[url_git, url_slash])
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("DONE: 2 repos, 0 failures", result.stderr)
+        self.assert_done(result.stderr, 2, 0)
         self.assertTrue(os.path.isdir(self.mirror_dir(url_git)))
         self.assertEqual(
             self.mirror_dir(url_slash),
             os.path.join(self.base_dir, "github.com", "owner", "repo2.git"),
         )
         self.assertTrue(os.path.isdir(self.mirror_dir(url_slash)))
+        self.assertEqual(self.remote_url(url_git), url_git)
+        self.assertEqual(self.remote_url(url_slash), url_slash)
 
     def test_clone_05_host_collision_distinct_mirrors(self):
         url_gh = "https://github.com/owner/repo.git"
@@ -89,7 +85,7 @@ class CloneTest(MirrorTestCase):
         other.branch("extra")
         result = self.run_script(repos=[url_gh, url_other])
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("DONE: 2 repos, 0 failures", result.stderr)
+        self.assert_done(result.stderr, 2, 0)
         self.assertTrue(os.path.isdir(self.mirror_dir(url_gh)))
         self.assertTrue(os.path.isdir(self.mirror_dir(url_other)))
         self.assertNotEqual(self.mirror_dir(url_gh), self.mirror_dir(url_other))
@@ -107,8 +103,9 @@ class CloneTest(MirrorTestCase):
         result = self.run_script(repos=[url])
         self.assertEqual(result.returncode, 1)
         self.assertIn("CLONE  " + url, result.stderr)
-        self.assertIn("DONE: 1 repos, 1 failures", result.stderr)
+        self.assert_done(result.stderr, 1, 1)
         self.assertNotIn("WARN", result.stderr)
+        self.assertFalse(os.path.isdir(self.mirror_dir(url)), "mirror dir should not exist after failed clone")
 
     def test_clone_07_empty_dir_treated_as_clone(self):
         url = "https://github.com/owner/repo.git"
@@ -118,7 +115,7 @@ class CloneTest(MirrorTestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("CLONE  " + url, result.stderr)
         self.assertNotIn("UPDATE " + url, result.stderr)
-        self.assertIn("DONE: 1 repos, 0 failures", result.stderr)
+        self.assert_done(result.stderr, 1, 0)
         self.assertEqual(self.refs(url).get("refs/heads/main"), upstream.tip())
 
     def test_clone_08_no_staging_refs_after_clone(self):
@@ -126,12 +123,13 @@ class CloneTest(MirrorTestCase):
         self.make_upstream("github.com", "owner/repo")
         result = self.run_script(repos=[url])
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("DONE: 1 repos, 0 failures", result.stderr)
+        self.assert_done(result.stderr, 1, 0)
         out = subprocess.run(
             ["git", "--git-dir", self.mirror_dir(url), "for-each-ref", "refs/git-mirror"],
             capture_output=True, text=True, check=True,
         ).stdout
         self.assertEqual(out, "")
+        self.assert_done(result.stderr, 1, 0)
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ class UrlValidationTestCase(MirrorTestCase):
         r = self.run_script(repos=[url])
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("WARN: rejected repository URL: %s" % url, r.stderr)
-        self.assertIn("DONE: 1 repos, 1 failures", r.stderr)
+        self.assert_done(r.stderr, 1, 1)
         self.assertEqual(r.stderr.count("WARN: "), 1, r.stderr)
         self.assertNotIn("CLONE  ", r.stderr)
         self.assertNotIn("UPDATE ", r.stderr)
@@ -42,8 +42,9 @@ class UrlValidationTestCase(MirrorTestCase):
         self.assert_rejected_url("~/repo.git")
 
     def test_URL_06_empty_url_rejected(self):
-        # read_list strips blank lines, so the script itself can never see
-        # an empty URL; unit-test the extracted validate_url function.
+        # read_list() strips blank lines before validate_url() is called,
+        # so an empty URL is unreachable via the full script. Extract and
+        # unit-test the function directly.
         fd, vu_path = tempfile.mkstemp(prefix="gsm-vu-", suffix=".sh")
         os.close(fd)
         try:
@@ -52,6 +53,9 @@ class UrlValidationTestCase(MirrorTestCase):
                     ["sed", "-n", "/^validate_url()/,/^}/p", SCRIPT_PATH],
                     check=True, stdout=f,
                 )
+            with open(vu_path) as f:
+                extracted = f.read()
+            assert "validate_url" in extracted, "failed to extract validate_url() from script"
             r = subprocess.run(
                 ["bash", "-c",
                  'source "%s"; validate_url "" && echo BAD || echo REJECTED'
@@ -78,7 +82,7 @@ class UrlValidationTestCase(MirrorTestCase):
         r = self.run_script(repos=urls)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertNotIn("WARN: rejected repository URL", r.stderr)
-        self.assertIn("DONE: 3 repos, 0 failures", r.stderr)
+        self.assert_done(r.stderr, 3, 0)
         for url in urls:
             self.assertIn("CLONE  %s" % url, r.stderr)
             self.assertTrue(os.path.isdir(self.mirror_dir(url)), url)

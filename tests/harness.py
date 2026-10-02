@@ -44,6 +44,9 @@ PROXY_VARS = [
     "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "FTP_PROXY",
 ]
 
+BACKUP_RE = re.compile(r"refs/heads/(?P<branch>.+)-(?P<ts>\d{14})")
+STAGING_PREFIX = "refs/git-mirror/staging/"
+
 
 def repo_json(owner, name, host="github.com"):
     return {
@@ -382,6 +385,13 @@ class MockRuntime:
         self._fail_info.clear()
         self._upload_counter.clear()
 
+    def reset(self):
+        self.api_specs.clear()
+        with self._fallback_lock:
+            self._fallback = None
+        self.clear_failures()
+        self.clear_requests()
+
     def fallback_repo(self):
         with self._fallback_lock:
             if self._fallback is None:
@@ -547,13 +557,11 @@ class MirrorTestCase(unittest.TestCase):
         self.home_dir = os.path.join(self.tmpdir, "home")
         os.makedirs(self.home_dir)
         self.runtime = runtime()
-        self.runtime.clear_failures()
-        self.runtime.clear_requests()
+        self.runtime.reset()
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
-        self.runtime.clear_failures()
-        self.runtime.clear_requests()
+        self.runtime.reset()
 
     def run_script(self, orgs=(), repos=(), token=None, orgs_raw=None, repos_raw=None):
         orgs_file = os.path.join(self.config_dir, "orgs.txt")
@@ -671,3 +679,30 @@ class MirrorTestCase(unittest.TestCase):
         rel = os.path.relpath(prefix, self.base_dir)
         repo_prefix = "/" + rel
         return [r for r in self.captured() if r["path"].startswith(repo_prefix)]
+
+    def remote_url(self, url):
+        return subprocess.run(
+            ["git", "--git-dir", self.mirror_dir(url), "remote", "get-url", "origin"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+
+    def backup_refs(self, url, branch=None):
+        result = []
+        for ref in self.refs(url):
+            m = BACKUP_RE.match(ref)
+            if not m:
+                continue
+            if branch is None or m.group("branch") == branch:
+                result.append(ref)
+        return result
+
+    def assert_no_staging(self, url):
+        for ref in self.refs(url):
+            self.assertFalse(
+                ref.startswith(STAGING_PREFIX),
+                "unexpected staging ref: %s" % ref,
+            )
+
+    def assert_done(self, stderr, repos, failures):
+        self.assertIn(
+            "DONE: %d repos, %d failures" % (repos, failures), stderr)

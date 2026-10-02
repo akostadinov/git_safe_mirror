@@ -64,7 +64,7 @@ class TestOrgDiscovery(MirrorTestCase):
         proc = self.run_script(orgs=(org,))
 
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertIn("DONE: 205 repos, 0 failures", proc.stderr)
+        self.assert_done(proc.stderr, 205, 0)
 
         api = self.api_captured()
         self.assertEqual(len(api), 4)
@@ -99,7 +99,7 @@ class TestOrgDiscovery(MirrorTestCase):
 
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertNotIn("CLONE", proc.stderr)
-        self.assertIn("DONE: 0 repos, 0 failures", proc.stderr)
+        self.assert_done(proc.stderr, 0, 0)
         self.assertEqual(len(self.api_captured()), 1)
 
     def test_org_03_non_array_response(self):
@@ -111,7 +111,7 @@ class TestOrgDiscovery(MirrorTestCase):
 
         self.assertEqual(proc.returncode, 1)
         self.assertIn("WARN: listing failed for org %s" % org, proc.stderr)
-        self.assertIn("DONE: 0 repos, 1 failures", proc.stderr)
+        self.assert_done(proc.stderr, 0, 1)
 
     def test_org_04_transport_failure(self):
         org = "down-org"
@@ -122,6 +122,7 @@ class TestOrgDiscovery(MirrorTestCase):
 
         self.assertEqual(proc.returncode, 1)
         self.assertIn("WARN: listing failed for org %s" % org, proc.stderr)
+        self.assert_done(proc.stderr, 0, 1)
 
     def test_org_05_token_authorization_header(self):
         org = "tok-org"
@@ -189,5 +190,5 @@ class TestOrgDiscovery(MirrorTestCase):
         self.assertEqual(proc.returncode, 1)
         self.assertIn("WARN: listing failed for org %s" % org, proc.stderr)
         self.assertIn("CLONE  %s" % good_url, proc.stderr)
-        self.assertIn("DONE: 1 repos, 1 failures", proc.stderr)
+        self.assert_done(proc.stderr, 1, 1)
         self.assertTrue(os.path.isdir(self.mirror_dir(good_url)))

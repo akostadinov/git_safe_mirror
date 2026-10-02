@@ -1,3 +1,10 @@
+"""TAG-01..05: tag sync behaviour of git_safe_mirror.sh.
+
+Covers lightweight tag sync, tag retention (no pruning), moved tag
+updates, annotated tags, and tag-fetch failure isolation.
+
+See tests/TEST_CATALOG.md for the exact assertions.
+"""
 import subprocess
 
 from tests.harness import MirrorTestCase
@@ -37,9 +44,13 @@ class TagsTests(MirrorTestCase):
 
         up.delete_tag("v1")
 
+        main_tip = up.tip("main")
+
         r2 = self.run_script(repos=[url])
         self.assertEqual(r2.returncode, 0, r2.stderr)
         self.assertTrue(self.ref_exists(url, "refs/tags/v1"))
+        self.assertEqual(self.refs(url)["refs/heads/main"], main_tip)
+        self.assert_done(r2.stderr, 1, 0)
 
     def test_TAG_03_moved_tag_updated_no_backup(self):
         url = "https://github.com/owner/tag03.git"
@@ -55,6 +66,8 @@ class TagsTests(MirrorTestCase):
 
         r2 = self.run_script(repos=[url])
         self.assertEqual(r2.returncode, 0, r2.stderr)
+        self.assertIn("UPDATE %s" % url, r2.stderr)
+        self.assert_done(r2.stderr, 1, 0)
         self.assertNotEqual(a, b)
         self.assertEqual(self.refs(url)["refs/tags/v1"], b)
         self.assertNotIn("FORCE PUSH", r2.stderr)
@@ -91,3 +104,4 @@ class TagsTests(MirrorTestCase):
         self.assertEqual(r2.returncode, 1, r2.stderr)
         self.assertIn("WARN: tag fetch failed: %s" % url, r2.stderr)
         self.assertEqual(self.refs(url)["refs/heads/main"], new)
+        self.assert_no_staging(url)
