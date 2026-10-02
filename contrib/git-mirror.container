@@ -20,7 +20,6 @@ NoNewPrivileges=true
 DropCapability=all
 RunInit=true
 PidsLimit=256
-Umask=0077
 
 # Do not import proxy variables from the user/system environment.
 HttpProxy=false
@@ -39,7 +38,6 @@ Environment=ORGS_FILE=/config/orgs.txt
 Environment=REPOS_FILE=/config/repos.txt
 Environment=HOME=/tmp
 Environment=GIT_TERMINAL_PROMPT=0
-Environment=GIT_CONFIG_NOSYSTEM=1
 
 # Permit only the transports that this workload needs. This does not prevent
 # outbound connections to arbitrary Internet hosts through those transports.
@@ -55,7 +53,6 @@ Environment=GIT_CONFIG_VALUE_2=always
 # printf '%s' 'TOKEN' | podman secret create git-mirror-gh-token -
 # Secret=git-mirror-gh-token,type=env,target=GH_TOKEN
 
-LogDriver=journald
 StopTimeout=90
 
 [Service]
@@ -65,5 +62,5 @@ RemainAfterExit=no
 # Long mirror jobs are valid. Normal shutdown still stops the unit; this is
 # not an inhibitor and does not guarantee that a fetch completes.
 TimeoutStartSec=infinity
-TimeoutStopSec=10min
+TimeoutStopSec=2min
 Restart=no
