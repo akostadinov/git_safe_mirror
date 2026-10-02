@@ -82,7 +82,7 @@ validate_url() {
     local url=$1
 
     case "$url" in
-        https://* | ssh://* | *@*:*)
+        https://* | ssh://* | git://* | *@*:*)
             return 0
             ;;
         file://* | /* | ./* | ../* | ~/* | "")
@@ -104,6 +104,12 @@ repo_dir_for_url() {
         https://*)
             # e.g. https://gitlab.com/group/subgroup/repo.git
             path=${url#https://}
+            host=${path%%/*}
+            path=${path#*/}
+            ;;
+
+        git://*)
+            path=${url#git://}
             host=${path%%/*}
             path=${path#*/}
             ;;

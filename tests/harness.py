@@ -571,7 +571,7 @@ class MirrorTestCase(unittest.TestCase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
         self.runtime.reset()
 
-    def run_script(self, orgs=(), repos=(), token=None, orgs_raw=None, repos_raw=None):
+    def run_script(self, orgs=(), repos=(), token=None, orgs_raw=None, repos_raw=None, path_prefix=None):
         orgs_file = os.path.join(self.config_dir, "orgs.txt")
         repos_file = os.path.join(self.config_dir, "repos.txt")
         if orgs_raw is not None:
@@ -595,16 +595,21 @@ class MirrorTestCase(unittest.TestCase):
             f.write('[url "http://127.0.0.1:%d/github.com/"]\n'
                     "\tinsteadOf = https://github.com/\n"
                     "\tinsteadOf = git@github.com:\n"
-                    "\tinsteadOf = ssh://git@github.com:22/\n" % port)
+                    "\tinsteadOf = ssh://git@github.com:22/\n"
+                    "\tinsteadOf = git://github.com/\n" % port)
             f.write('[url "http://127.0.0.1:%d/gitlab.com/"]\n'
                     "\tinsteadOf = https://gitlab.com/\n"
                     "\tinsteadOf = git@gitlab.com:\n" % port)
             f.write('[url "http://127.0.0.1:%d/git.example.net/"]\n'
                     "\tinsteadOf = https://git.example.net/\n"
-                    "\tinsteadOf = ssh://git@git.example.net:2222/\n" % port)
+                    "\tinsteadOf = ssh://git@git.example.net:2222/\n"
+                    "\tinsteadOf = ssh://git.example.net/\n" % port)
 
+        path = os.environ.get("PATH", "/usr/bin:/bin")
+        if path_prefix:
+            path = path_prefix + ":" + path
         env = {
-            "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+            "PATH": path,
             "HOME": self.home_dir,
             "BASE_DIR": self.base_dir,
             "ORGS_FILE": orgs_file,
@@ -641,6 +646,9 @@ class MirrorTestCase(unittest.TestCase):
         BASE_DIR/host/<full-path>.git (port stripped, all components kept)."""
         if url.startswith("https://"):
             rest = url[len("https://"):]
+            host, _, path = rest.partition("/")
+        elif url.startswith("git://"):
+            rest = url[len("git://"):]
             host, _, path = rest.partition("/")
         elif url.startswith("ssh://"):
             rest = url[len("ssh://"):]
@@ -710,6 +718,43 @@ class MirrorTestCase(unittest.TestCase):
                 ref.startswith(STAGING_PREFIX),
                 "unexpected staging ref: %s" % ref,
             )
+
+    @staticmethod
+    def header(req, name):
+        """Case-insensitive header lookup on a captured request."""
+        for key, value in req["headers"].items():
+            if key.lower() == name.lower():
+                return value
+        return None
+
+    @staticmethod
+    def page_of(req):
+        for part in req["query"].split("&"):
+            if part.startswith("page="):
+                return part.split("=", 1)[1]
+        return None
+
+    def git_wrapper(self, fail_args=None, cwd=None):
+        """Create a git wrapper that exits 1 when any arg matches fail_args,
+        then return the directory to prepend to PATH.
+        E.g. git_wrapper(['pack-refs']) or git_wrapper(['set-url'])."""
+        import tempfile as _tf
+        wrapper_dir = cwd or _tf.mkdtemp(prefix="gsm-shim-", dir=self.tmpdir)
+        wrapper = os.path.join(wrapper_dir, "git")
+        real_git = subprocess.check_output(
+            ["bash", "-c", "command -v git"], text=True).strip()
+        with open(wrapper, "w") as f:
+            f.write("#!/bin/sh\n")
+            if fail_args:
+                f.write('for arg in "$@"; do\n')
+                f.write('    case "$arg" in\n')
+                for cmd in fail_args:
+                    f.write("        %s) exit 1 ;;\n" % cmd)
+                f.write("    esac\n")
+                f.write("done\n")
+            f.write('exec "%s" "$@"\n' % real_git)
+        os.chmod(wrapper, 0o755)
+        return wrapper_dir
 
     def assert_done(self, stderr, repos, failures):
         self.assertIn(

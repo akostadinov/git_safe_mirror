@@ -61,6 +61,12 @@ class ConfigTestCase(MirrorTestCase):
         self.assertNotIn("\r", api[0]["path"])
         self.assertTrue(api[0]["path"].startswith("/orgs/acme/repos"))
 
+    def test_CFG_04_inline_comment_not_stripped(self):
+        r = self.run_script(orgs_raw="acme # production org\n")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(
+            "WARN: listing failed for org acme # production org", r.stderr)
+
 
 if __name__ == "__main__":
     import unittest

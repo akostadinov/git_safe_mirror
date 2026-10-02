@@ -65,6 +65,17 @@ class LayoutTest(MirrorTestCase):
                 self.assert_done(result.stderr, 1, 1)
         self.assertEqual(os.listdir(self.base_dir), [])
 
+    def test_LAYOUT_05_ssh_without_user(self):
+        url = "ssh://git.example.net/group/project.git"
+        self.make_upstream("git.example.net", "group/project")
+        result = self.run_script(repos=[url])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assert_done(result.stderr, 1, 0)
+        expected = os.path.join(self.base_dir, "git.example.net", "group", "project.git")
+        self.assertEqual(self.mirror_dir(url), expected)
+        self.assertTrue(os.path.isdir(expected))
+        self.assertEqual(self.remote_url(url), url)
+
 
 if __name__ == "__main__":
     unittest.main()

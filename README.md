@@ -128,6 +128,15 @@ The script does not prune removed upstream branches or tags. Moved tags are upda
 
 There is no shutdown/sleep inhibitor. During an orderly stop, an interrupted staging fetch may leave staging refs, but the next run refreshes them. Independent backups remain necessary for valuable mirrors and for power-loss recovery.
 
+## Running tests
+
+Tests use `unittest` and require Python 3 plus the `cryptography` package. They start a local mock HTTPS server (with a CA and leaf cert), so no real network is needed.
+
+```bash
+pip install --user cryptography
+python3 -m unittest discover -s tests -v
+```
+
 ## Container deployment (Podman + Quadlet)
 
 For users who want stronger isolation, the script can be run inside a rootless Podman container managed by Quadlet. This is an advanced deployment option; most users should run the script directly as described above.

@@ -5,6 +5,7 @@ untouched, the DONE summary line format for mixed runs, all-green runs,
 and rejected mirror destinations.
 """
 
+import os
 import unittest
 
 from tests.harness import MirrorTestCase
@@ -84,6 +85,12 @@ class FailuresTestCase(MirrorTestCase):
             "WARN: rejected repository destination: %s" % url, r.stderr)
         self.assert_done(r.stderr, 1, 1)
         self.assertIsNone(self.mirror_dir(url))
+
+    def test_FAIL_06_empty_inputs(self):
+        r = self.run_script(orgs=[], repos=[])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assert_done(r.stderr, 0, 0)
+        self.assertEqual(os.listdir(self.base_dir), [])
 
 
 if __name__ == "__main__":

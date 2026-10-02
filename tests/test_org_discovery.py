@@ -1,10 +1,9 @@
 """Org discovery tests (curl+jq path, no gh) for git_safe_mirror.sh.
 
-Covers ORG-01..09 from tests/TEST_CATALOG.md:
+Covers ORG-01..09:
 
-- ORG-01 pagination: pages of 100,100,5 then []. All cloned,
-  ``DONE: 205 repos, 0 failures``, 4 API GETs with page=1..4,
-  Accept: application/vnd.github+json.
+- ORG-01 pagination: pages of 100,100,5 then []. All cloned, ``DONE: 205 repos,
+  0 failures``, 4 API GETs with page=1..4, Accept header present.
 - ORG-02 empty org ([]): exit 0, no CLONE, ``DONE: 0 repos, 0 failures``,
   1 API request.
 - ORG-03 non-array ({"message":"Not Found"}): exit 1,
@@ -28,21 +27,6 @@ from tests.harness import MirrorTestCase, repo_json
 
 
 class TestOrgDiscovery(MirrorTestCase):
-
-    @staticmethod
-    def _header(req, name):
-        """Case-insensitive header lookup on a captured request."""
-        for key, value in req["headers"].items():
-            if key.lower() == name.lower():
-                return value
-        return None
-
-    @staticmethod
-    def _page_of(req):
-        for part in req["query"].split("&"):
-            if part.startswith("page="):
-                return part.split("=", 1)[1]
-        return None
 
     def _clone_urls(self, stderr):
         urls = []
@@ -72,9 +56,9 @@ class TestOrgDiscovery(MirrorTestCase):
             self.assertEqual(req["method"], "GET")
             self.assertEqual(req["host"], "api.github.com")
             self.assertEqual(req["path"].split("?")[0], "/orgs/%s/repos" % org)
-            self.assertEqual(self._page_of(req), str(i))
+            self.assertEqual(self.page_of(req), str(i))
             self.assertEqual(
-                self._header(req, "Accept"), "application/vnd.github+json")
+                self.header(req, "Accept"), "application/vnd.github+json")
 
         expected_urls = [
             "https://github.com/%s/%s.git" % (org, n) for n in names
@@ -135,7 +119,7 @@ class TestOrgDiscovery(MirrorTestCase):
         api = self.api_captured()
         self.assertEqual(len(api), 1)
         self.assertEqual(
-            self._header(api[0], "Authorization"), "Bearer %s" % token)
+            self.header(api[0], "Authorization"), "Bearer %s" % token)
 
     def test_org_06_no_token_no_authorization(self):
         org = "notok-org"
@@ -146,7 +130,7 @@ class TestOrgDiscovery(MirrorTestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         api = self.api_captured()
         self.assertEqual(len(api), 1)
-        self.assertIsNone(self._header(api[0], "Authorization"))
+        self.assertIsNone(self.header(api[0], "Authorization"))
 
     def test_org_07_clone_url_extraction(self):
         org = "extract-org"

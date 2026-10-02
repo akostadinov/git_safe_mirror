@@ -72,15 +72,17 @@ class UrlValidationTestCase(MirrorTestCase):
             "https://github.com/acme/repo.git",
             "git@github.com:acme/scp.git",
             "ssh://git@git.example.net:2222/group/project.git",
+            "git://github.com/acme/gitproto.git",
         ]
         self.make_upstream("github.com", "acme/repo")
         self.make_upstream("github.com", "acme/scp")
         self.make_upstream("git.example.net", "group/project")
+        self.make_upstream("github.com", "acme/gitproto")
 
         r = self.run_script(repos=urls)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertNotIn("WARN: rejected repository URL", r.stderr)
-        self.assert_done(r.stderr, 3, 0)
+        self.assert_done(r.stderr, 4, 0)
         for url in urls:
             self.assertIn("CLONE  %s" % url, r.stderr)
             self.assertTrue(os.path.isdir(self.mirror_dir(url)), url)

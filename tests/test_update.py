@@ -1,8 +1,8 @@
-"""UPDATE-01..09: incremental update behaviour of git_safe_mirror.sh.
+"""UPDATE-01..10: incremental update behaviour of git_safe_mirror.sh.
 
 Covers fast-forward updates, new branches, non-fast-forward (force push)
 backups, atomic staging/promotion transactions, no-prune semantics,
-set-url switching, and fetch-failure handling.
+set-url switching, fetch-failure handling, and set-url failure.
 """
 
 import re
@@ -220,6 +220,24 @@ class UpdateTestCase(MirrorTestCase):
         self.assertEqual(self.refs(bad)["refs/heads/main"], bad_before)
         self.assert_no_staging(good)
         self.assert_no_staging(bad)
+
+    def test_UPDATE_10_set_url_failure(self):
+        url = "https://github.com/acme/urlfail.git"
+        up = self.make_upstream("github.com", "acme/urlfail")
+
+        r1 = self.run_script(repos=[url])
+        self.assertEqual(r1.returncode, 0, r1.stderr)
+        main_before = up.tip("main")
+
+        up.commit("second")
+
+        wrapper_dir = self.git_wrapper(['set-url'])
+
+        r2 = self.run_script(repos=[url], path_prefix=wrapper_dir)
+        self.assertEqual(r2.returncode, 1, r2.stderr)
+        self.assert_done(r2.stderr, 1, 1)
+        self.assertEqual(self.refs(url)["refs/heads/main"], main_before)
+        self.assert_no_staging(url)
 
 
 if __name__ == "__main__":
