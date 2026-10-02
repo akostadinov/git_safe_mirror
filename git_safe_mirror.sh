@@ -6,17 +6,17 @@
 # upstream update is promoted into refs/heads/*.
 #
 # Environment:
-#   BASE_DIR    default: /mirrors
-#   ORGS_FILE   default: /config/orgs.txt
-#   REPOS_FILE  default: /config/repos.txt
+#   BASE_DIR    default: $PWD/mirrors
+#   ORGS_FILE   default: $PWD/orgs.txt
+#   REPOS_FILE  default: $PWD/repos.txt
 #   GH_TOKEN    optional; GitHub API discovery only, not Git HTTPS auth
 #
 set -euo pipefail
 umask 077
 
-BASE_DIR=${BASE_DIR:-/mirrors}
-ORGS_FILE=${ORGS_FILE:-/config/orgs.txt}
-REPOS_FILE=${REPOS_FILE:-/config/repos.txt}
+BASE_DIR=${BASE_DIR:-$PWD/mirrors}
+ORGS_FILE=${ORGS_FILE:-$PWD/orgs.txt}
+REPOS_FILE=${REPOS_FILE:-$PWD/repos.txt}
 TS=$(date -u +%Y%m%d%H%M%S)
 FAILS=0
 
@@ -102,21 +102,25 @@ repo_dir_for_url() {
 
     case "$url" in
         https://*)
+            # e.g. https://gitlab.com/group/subgroup/repo.git
             path=${url#https://}
             host=${path%%/*}
             path=${path#*/}
             ;;
 
         ssh://*)
+            # e.g. ssh://git@gitlab.example.com:2222/group/repo.git
             path=${url#ssh://}
             path=${path#*/}
             host=${url#ssh://}
             host=${host%%/*}
             host=${host##*@}
+            # Host-only storage key; deliberately omit optional SSH port.
             host=${host%%:*}
             ;;
 
         *@*:*)
+            # SCP-like syntax: git@gitlab.example.com:group/subgroup/repo.git
             host=${url%%:*}
             host=${host##*@}
             path=${url#*:}
@@ -130,6 +134,7 @@ repo_dir_for_url() {
     path=${path%/}
     path=${path%.git}
 
+    # Prevent empty, traversal, and repeated-slash paths.
     [[ -n $host && -n $path ]] || return 1
     [[ $host != . && $host != .. ]] || return 1
 
