@@ -10,8 +10,7 @@ RUN apk add --no-cache \
 
 COPY git_safe_mirror.sh /usr/local/bin/git_safe_mirror.sh
 
-RUN chmod 0555 /usr/local/bin/git_safe_mirror.sh \
-    && bash -n /usr/local/bin/git_safe_mirror.sh
+RUN bash -n /usr/local/bin/git_safe_mirror.sh
 
 USER 1000:1000
 WORKDIR /mirrors
