@@ -1,5 +1,8 @@
 # Git Safe Mirror
 
+[![Tests](https://github.com/akostadinov/git_safe_mirror/actions/workflows/tests.yml/badge.svg)](https://github.com/akostadinov/git_safe_mirror/actions/workflows/tests.yml)
+[![Container build](https://github.com/akostadinov/git_safe_mirror/actions/workflows/container.yml/badge.svg)](https://github.com/akostadinov/git_safe_mirror/actions/workflows/container.yml)
+
 A tool for maintaining local bare Git repository mirrors.
 
 The mirror job clones repositories as bare repositories, updates existing mirrors without pruning deleted upstream branches, snapshots pre-rewrite branch tips, supports explicit HTTPS and SSH URLs, and can discover public repositories in GitHub organizations. It can be run directly from any directory, or deployed as a scheduled container via Podman Quadlet for users who want stronger isolation.
@@ -141,16 +144,10 @@ The example units expect this location:
 
 ```text
 ~/.local/share/git-mirror/
-├── image/
-│   ├── Dockerfile
-│   ├── .dockerignore
-│   └── git_safe_mirror.sh
 ├── config/
 │   ├── orgs.txt
 │   └── repos.txt
 ├── mirrors/
-├── bin/
-│   └── ensure-image.sh
 └── state/
 ```
 
@@ -158,7 +155,7 @@ Create it:
 
 ```bash
 install -d -m 0700 \
-  ~/.local/share/git-mirror/{image,config,mirrors,bin,state} \
+  ~/.local/share/git-mirror/{config,mirrors,state} \
   ~/.config/containers/systemd \
   ~/.config/systemd/user
 ```
@@ -166,25 +163,13 @@ install -d -m 0700 \
 Install the repository files:
 
 ```bash
-install -m 0644 Dockerfile \
-  ~/.local/share/git-mirror/image/Dockerfile
-install -m 0644 .dockerignore \
-  ~/.local/share/git-mirror/image/.dockerignore
-install -m 0644 git_safe_mirror.sh \
-  ~/.local/share/git-mirror/image/git_safe_mirror.sh
-
 install -m 0600 config-examples/orgs.txt \
   ~/.local/share/git-mirror/config/orgs.txt
 install -m 0600 config-examples/repos.txt \
   ~/.local/share/git-mirror/config/repos.txt
 
-install -m 0700 contrib/ensure-image.sh \
-  ~/.local/share/git-mirror/bin/ensure-image.sh
-
 install -m 0644 contrib/git-mirror.container \
   ~/.config/containers/systemd/git-mirror.container
-install -m 0644 contrib/git-mirror-image.service \
-  ~/.config/systemd/user/git-mirror-image.service
 install -m 0644 contrib/git-mirror.timer \
   ~/.config/systemd/user/git-mirror.timer
 
@@ -209,21 +194,52 @@ SSH URLs are accepted, but the default Quadlet does not mount private keys, `kno
 
 ### Image policy
 
-`ensure-image.sh` maintains `localhost/git-mirror:current`. It rebuilds if the image is missing, source files changed, the tag changed, the record is invalid, or the last successful build is at least 14 days old.
+The container references `ghcr.io/akostadinov/git_safe_mirror:latest`, which is built and published automatically by the project's CI on every push to `main` and weekly.
 
-The build uses:
+The container unit sets `Pull=always`, so Podman re-pulls the image on each service start. Combined with the daily timer, this ensures the latest image is fetched automatically.
 
-```bash
-podman build --pull=always --no-cache --tag localhost/git-mirror:current CONTEXT
+### Local image build (optional)
+
+Alternatively, you can build the image locally and have the container use the local image instead of pulling from the registry. This is useful if you want to run a custom or unreleased version.
+
+To use a local image, change the `Image=` line in `git-mirror.container` to `localhost/git-mirror:current` and install the local build service:
+
+```text
+~/.local/share/git-mirror/
+├── image/
+│   ├── Dockerfile
+│   ├── .dockerignore
+│   └── git_safe_mirror.sh
+├── bin/
+│   └── ensure-image.sh
 ```
 
-After a successful rebuild it runs:
-
 ```bash
-podman image prune --force
+install -d -m 0700 ~/.local/share/git-mirror/{image,bin}
+
+install -m 0644 Dockerfile \
+  ~/.local/share/git-mirror/image/Dockerfile
+install -m 0644 .dockerignore \
+  ~/.local/share/git-mirror/image/.dockerignore
+install -m 0644 git_safe_mirror.sh \
+  ~/.local/share/git-mirror/image/git_safe_mirror.sh
+
+install -m 0700 contrib/ensure-image.sh \
+  ~/.local/share/git-mirror/bin/ensure-image.sh
+
+install -m 0644 contrib/git-mirror-image.service \
+  ~/.config/systemd/user/git-mirror-image.service
+
+systemctl --user daemon-reload
 ```
 
-`--force` only suppresses the confirmation prompt. Without `--all`, this prunes dangling images only. Do not automatically run `podman image prune --all` or `podman system prune`, since the rootless Podman image store may be shared with other applications under the same user.
+`ensure-image.sh` maintains `localhost/git-mirror:current`. It rebuilds if the image is missing, source files changed, the tag changed, the record is invalid, or the last successful build is at least 14 days old. You can trigger a manual rebuild:
+
+```bash
+~/.local/share/git-mirror/bin/ensure-image.sh
+```
+
+The local build service is independent — the container does not depend on it. You can run `ensure-image.sh` manually or via a timer of your choice.
 
 ### Test and schedule
 
@@ -232,7 +248,7 @@ Reload units and run one job manually:
 ```bash
 systemctl --user daemon-reload
 systemctl --user start git-mirror.service
-journalctl --user -u git-mirror-image.service -u git-mirror.service -b
+journalctl --user -u git-mirror.service -b
 ```
 
 After a successful test, enable the daily timer:
@@ -263,7 +279,7 @@ systemctl --user daemon-reload
 systemctl --user cat git-mirror.service
 ```
 
-Test image build alone:
+Test image build alone (local build only):
 
 ```bash
 ~/.local/share/git-mirror/bin/ensure-image.sh

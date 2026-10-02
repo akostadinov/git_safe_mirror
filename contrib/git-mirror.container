@@ -1,12 +1,11 @@
 [Unit]
 Description=Git repository mirror synchronization
 Wants=network-online.target
-After=network-online.target git-mirror-image.service
-Requires=git-mirror-image.service
+After=network-online.target
 
 [Container]
-Image=localhost/git-mirror:current
-Pull=never
+Image=ghcr.io/akostadinov/git_safe_mirror:latest
+Pull=always
 ContainerName=git-mirror
 
 # Rootless user namespace. The numeric IDs must be the same IDs used in the

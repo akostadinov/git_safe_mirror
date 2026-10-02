@@ -1,0 +1,20 @@
+name: Container build
+
+on:
+  push:
+    branches:
+    - main
+  schedule:
+  - cron: '0 0 * * 0'
+  workflow_dispatch:
+    inputs:
+      custom_tag:
+        description: a custom tag for the image
+        default: scratch
+
+jobs:
+  build-container:
+    uses: ./.github/workflows/container-image-build.yml
+    with:
+      custom_tag: ${{ inputs.custom_tag }}
+    secrets: inherit
