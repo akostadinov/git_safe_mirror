@@ -3,8 +3,6 @@
 Covers silent clone failures, update fetch failures leaving live refs
 untouched, the DONE summary line format for mixed runs, all-green runs,
 and rejected mirror destinations.
-
-See tests/TEST_CATALOG.md for the exact assertions.
 """
 
 import unittest

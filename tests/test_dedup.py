@@ -4,8 +4,6 @@ Dedup is by exact URL string (no normalization): the same URL from
 repos.txt and from org discovery is synced once, duplicates within
 repos.txt are synced once, and "owner/repo.git" vs "owner/repo" are
 two distinct URL strings that map to the same mirror directory.
-
-See tests/TEST_CATALOG.md for the exact assertions.
 """
 
 from tests.harness import MirrorTestCase, repo_json

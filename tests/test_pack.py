@@ -3,8 +3,6 @@
 After a force-push update creates a timestamped backup ref, the script
 runs pack-refs --all --prune, so packed-refs must exist and contain both
 the live branch and the backup ref.
-
-See tests/TEST_CATALOG.md for the exact assertions.
 """
 
 import os

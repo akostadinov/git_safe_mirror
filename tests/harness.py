@@ -9,6 +9,14 @@ Provides:
     server, so curl/git perform real TLS verification against the test CA
   - MirrorTestCase, a unittest base class with helpers to create upstream
     repos, run the script, and inspect the resulting mirrors
+
+Script output conventions: log `<ISO8601-UTC> | <msg>` on stderr; prefixes
+`CLONE  `, `UPDATE `, `ORG    `, `WARN: `, `FORCE PUSH on <branch>: staging
+backup <ref>`, `DONE: <N> repos, <F> failures`. Exit 0 iff FAILS==0. Mirror
+layout `BASE_DIR/host/<full-path>.git`. Backup refs
+`refs/heads/<branch>-<14-digit UTC TS>`. Dumb HTTP: git requests are GETs only
+(no POST upload-pack). Failure injection via `fail_nth_info_refs(host,
+path_prefix, n, status)`.
 """
 
 import datetime

@@ -1,8 +1,6 @@
 """CFG-01..03: config file (orgs.txt) parsing in git_safe_mirror.sh.
 
 Covers comment lines, blank/whitespace-only lines, and CRLF stripping.
-
-See tests/TEST_CATALOG.md for the exact assertions.
 """
 
 from tests.harness import MirrorTestCase, repo_json

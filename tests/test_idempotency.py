@@ -2,8 +2,6 @@
 
 Covers the second-run UPDATE path (no CLONE), identical refs, no new
 refs, and no leftover staging refs.
-
-See tests/TEST_CATALOG.md for the exact assertions.
 """
 
 import unittest

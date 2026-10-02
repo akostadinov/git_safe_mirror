@@ -2,8 +2,6 @@
 
 Covers lightweight tag sync, tag retention (no pruning), moved tag
 updates, annotated tags, and tag-fetch failure isolation.
-
-See tests/TEST_CATALOG.md for the exact assertions.
 """
 import subprocess
 

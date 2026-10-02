@@ -3,8 +3,6 @@
 Covers fast-forward updates, new branches, non-fast-forward (force push)
 backups, atomic staging/promotion transactions, no-prune semantics,
 set-url switching, and fetch-failure handling.
-
-See tests/TEST_CATALOG.md for the exact assertions.
 """
 
 import re

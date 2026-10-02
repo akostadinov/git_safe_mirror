@@ -3,8 +3,6 @@
 Covers rejection of file://, absolute-path, ./, ../, ~/, empty, and
 scheme-less (plain host:path) repository URLs, plus the accepted-form
 matrix (https://, scp-style, ssh://).
-
-See tests/TEST_CATALOG.md for the exact assertions.
 """
 
 import os
