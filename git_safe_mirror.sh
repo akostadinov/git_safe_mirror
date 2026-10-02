@@ -29,7 +29,7 @@ read_list() {
 }
 
 org_repos() {
-    local org=$1 page=1 resp urls
+    local org=$1 page=1 resp urls rc
     local args=(
         -fsSL
         --proto '=https'
@@ -66,7 +66,11 @@ org_repos() {
             else
                 .[].clone_url
             end
-        ' <<<"$resp") || return 1
+        ' <<<"$resp") && rc=0 || rc=$?
+        # jq exits 4 when the filter yields no output (an empty repo list);
+        # that is a valid "no repos" result, not a failure. Other non-zero
+        # exits (e.g. 5 for error()/parse errors) are real failures.
+        [[ $rc -eq 0 || $rc -eq 4 ]] || return 1
 
         [[ -n $urls ]] || break
         printf '%s\n' "$urls"
@@ -94,31 +98,25 @@ validate_url() {
 }
 
 repo_dir_for_url() {
-    local url=$1 rest host path
+    local url=$1 path host
 
     case "$url" in
         https://*)
-            rest=${url#https://}
-            host=${rest%%/*}
-            path=${rest#*/}
+            path=${url#https://}
+            host=${path%%/*}
+            path=${path#*/}
             ;;
 
         ssh://*)
-            rest=${url#ssh://}
-
-            # Strip userinfo: "git@gitlab.example.com:2222/a/b/repo.git"
-            rest=${rest#*@}
-
-            host=${rest%%/*}
-            path=${rest#*/}
-
-            # Host-only storage key; deliberately omit optional SSH port.
+            path=${url#ssh://}
+            path=${path#*/}
+            host=${url#ssh://}
+            host=${host%%/*}
+            host=${host##*@}
             host=${host%%:*}
             ;;
 
         *@*:*)
-            # SCP-like syntax:
-            # git@gitlab.example.com:group/subgroup/repo.git
             host=${url%%:*}
             host=${host##*@}
             path=${url#*:}
@@ -132,15 +130,22 @@ repo_dir_for_url() {
     path=${path%/}
     path=${path%.git}
 
-    # Prevent empty, absolute, traversal, and repeated-slash paths.
     [[ -n $host && -n $path ]] || return 1
-    [[ $host != */* && $host != . && $host != .. ]] || return 1
-    [[ $path != /* && $path != *'//'*
-       && $path != '.' && $path != '..'
-       && $path != '../'* && $path != *'/../' && $path != *'/..' ]] || return 1
+    [[ $host != . && $host != .. ]] || return 1
 
-    # Path is already inside a host-specific directory. Each component is
-    # retained: owner/repo and all GitLab group/subgroup components.
+    # Keep the entire remote path (host/owner[/subgroup]/name) so that
+    # GitLab subgroup layouts are preserved. Reject . and .. components.
+    local IFS=/
+    local parts=($path)
+    local part
+    [[ ${#parts[@]} -ge 2 ]] || return 1
+    for part in "${parts[@]}"; do
+        [[ -n $part && $part != . && $part != .. ]] || return 1
+    done
+    unset IFS
+
+    # Include host, preventing github.com/foo/bar from colliding with
+    # git.example.net/foo/bar.
     printf '%s/%s/%s.git\n' "$BASE_DIR" "$host" "$path"
 }
 
@@ -161,7 +166,7 @@ stage_and_promote_heads() {
     fi
 
     txn=$(mktemp "${TMPDIR:-/tmp}/git-mirror-refs.XXXXXXXX") || return 1
-    trap 'rm -f "$txn"' RETURN
+    trap 'rm -f "${txn:-}"' RETURN
 
     {
         printf 'start\n'
