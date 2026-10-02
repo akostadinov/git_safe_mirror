@@ -7,7 +7,6 @@ matrix (https://, scp-style, ssh://).
 
 import os
 import subprocess
-import tempfile
 import unittest
 
 from tests.harness import SCRIPT_PATH, MirrorTestCase
@@ -41,28 +40,15 @@ class UrlValidationTestCase(MirrorTestCase):
 
     def test_URL_06_empty_url_rejected(self):
         # read_list() strips blank lines before validate_url() is called,
-        # so an empty URL is unreachable via the full script. Extract and
-        # unit-test the function directly.
-        fd, vu_path = tempfile.mkstemp(prefix="gsm-vu-", suffix=".sh")
-        os.close(fd)
-        try:
-            with open(vu_path, "w") as f:
-                subprocess.run(
-                    ["sed", "-n", "/^validate_url()/,/^}/p", SCRIPT_PATH],
-                    check=True, stdout=f,
-                )
-            with open(vu_path) as f:
-                extracted = f.read()
-            assert "validate_url" in extracted, "failed to extract validate_url() from script"
-            r = subprocess.run(
-                ["bash", "-c",
-                 'source "%s"; validate_url "" && echo BAD || echo REJECTED'
-                 % vu_path],
-                capture_output=True, text=True, check=True,
-            )
-            self.assertEqual(r.stdout.strip(), "REJECTED")
-        finally:
-            os.unlink(vu_path)
+        # so an empty URL is unreachable via the full script. Source the
+        # script and unit-test the function directly.
+        r = subprocess.run(
+            ["bash", "-c",
+             'source "%s"; validate_url "" && echo BAD || echo REJECTED'
+             % SCRIPT_PATH],
+            capture_output=True, text=True, check=True,
+        )
+        self.assertEqual(r.stdout.strip(), "REJECTED")
 
     def test_URL_07_plain_host_path_rejected(self):
         self.assert_rejected_url("github.com:owner/repo")

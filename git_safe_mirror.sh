@@ -286,6 +286,8 @@ sync_repo() {
     }
 }
 
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 0
+
 declare -A seen=()
 
 mapfile -t orgs < <(read_list "$ORGS_FILE")
