@@ -8,9 +8,10 @@ Image=ghcr.io/akostadinov/git_safe_mirror:latest
 Pull=always
 ContainerName=git-mirror
 
-# Rootless user namespace. The numeric IDs must be the same IDs used in the
-# Dockerfile. Host-mounted files consequently remain owned by your account.
-UserNS=keep-id:uid=1000,gid=1000
+# Rootless user namespace. These IDs should match your host use UID/GID,
+# keep-id maps the host UID to the same UID inside the container, so the
+# mounted volumes should be owned by the same UID running the container.
+UserNS=keep-id
 User=1000
 Group=1000
 
@@ -25,6 +26,14 @@ PidsLimit=256
 HttpProxy=false
 
 # Only persistent writable data: the dedicated mirror destination.
+# To set a static SELinux context and avoid relabeling on every restart,
+# manually label the host directory with your own MCS categories,
+# for example:
+#
+#   chcon -R -t container_file_t -l s0:c773,c884 %h/.local/share/git-mirror/mirrors
+#
+# Then uncomment the following line and remove the Z volume flag:
+# SecurityLabelLevel=s0:c773,c884
 Volume=%h/.local/share/git-mirror/mirrors:/mirrors:rw,Z
 
 # Config is visible but not writable by the container.
