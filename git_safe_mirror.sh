@@ -12,7 +12,6 @@
 #   GH_TOKEN    optional; GitHub API discovery only, not Git HTTPS auth
 #
 set -euo pipefail
-umask 077
 
 BASE_DIR=${BASE_DIR:-$PWD/mirrors}
 ORGS_FILE=${ORGS_FILE:-$PWD/orgs.txt}
